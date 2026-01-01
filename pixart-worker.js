@@ -1,3 +1,9 @@
+/*
+ * PixArt - Image to Pixel Art Converter
+ * Copyright (c) 2025 Virtron
+ * MIT License (see LICENSE file for details)
+ */
+
 // CIELAB Color Space Constants
 // Reference: CIE D65 standard illuminant (daylight)
 const D65_REFERENCE_X = 95.047;

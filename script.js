@@ -1,3 +1,9 @@
+/*
+ * PixArt - Image to Pixel Art Converter
+ * Copyright (c) 2025 Virtron
+ * MIT License (see LICENSE file for details)
+ */
+
 let palette = [];
 let originalImage = null; // Store the original image
 let lastPickedColor = null; // Store the last picked color
@@ -6,7 +12,7 @@ let canvas, ctx; // Declare canvas and ctx at a higher scope
 
 // Try to create a worker if browser supports it
 try {
-    worker = new Worker('o.js');
+    worker = new Worker('pixart-worker.js');
 
     // Handle worker response
     worker.addEventListener('message', (event) => {
@@ -130,6 +136,16 @@ function updateColorCount() {
     colorCount.textContent = palette.length;
 }
 
+// Update clear palette button visibility
+function updateClearPaletteButton() {
+    const clearPaletteButton = document.getElementById('clearPalette');
+    if (palette.length > 0) {
+        clearPaletteButton.classList.remove('hidden');
+    } else {
+        clearPaletteButton.classList.add('hidden');
+    }
+}
+
 // Display the palette
 function updatePaletteDisplay() {
     const paletteDiv = document.getElementById('palette');
@@ -168,6 +184,9 @@ function updatePaletteDisplay() {
         // Append container to palette
         paletteDiv.appendChild(colorContainer);
     });
+
+    // Update clear palette button visibility
+    updateClearPaletteButton();
 }
 
 // Capture color from the canvas on click and add to the palette
@@ -207,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePaletteDisplay();
     updatePaletteDropdown();
     updateColorCount();
+    updateClearPaletteButton();
 
     // Add event listener for the upload button
     uploadImageBtn.addEventListener('click', () => {
@@ -263,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             worker.postMessage({ type: 'quantize', imageData, palette });
         } else {
-            alert('Color quantization requires the worker script (o.js). Functionality is limited without it.');
+            alert('Color quantization requires the worker script (pixart-worker.js). Functionality is limited without it.');
         }
     });
 
@@ -276,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (!worker) {
-            alert('Auto-generating palette requires the worker script (o.js).');
+            alert('Auto-generating palette requires the worker script (pixart-worker.js).');
             return;
         }
 
@@ -377,5 +397,12 @@ document.addEventListener('DOMContentLoaded', function() {
         a.href = dataUrl;
         a.download = 'pixelated-image.png';
         a.click();
+    });
+
+    // Add event listener for the Clear Palette button
+    document.getElementById('clearPalette').addEventListener('click', () => {
+        palette = [];
+        updatePaletteDisplay();
+        updateColorCount();
     });
 });
