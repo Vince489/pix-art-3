@@ -9,10 +9,6 @@ const ctx = canvas.getContext('2d', { willReadFrequently: true });
 // Elements for image information
 const imageDimensions = document.getElementById('imageDimensions');
 const colorCount = document.getElementById('colorCount');
-const colorR = document.getElementById('colorR');
-const colorG = document.getElementById('colorG');
-const colorB = document.getElementById('colorB');
-const colorHex = document.getElementById('colorHex');
 
 let palette = [];
 let originalImage = null; // Store the original image
@@ -50,8 +46,6 @@ canvas.addEventListener('click', (event) => {
     const color = [pixelData[0], pixelData[1], pixelData[2]]; // RGB values
     lastPickedColor = color;
 
-    // Update color info display
-    updateColorInfo(color);
 
     // Add color to palette if it doesn't already exist
     if (!palette.some(existingColor => arraysEqual(existingColor, color))) {
@@ -66,20 +60,6 @@ function arraysEqual(a, b) {
     return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-// Update color information display
-function updateColorInfo(color) {
-    if (color) {
-        colorR.textContent = color[0];
-        colorG.textContent = color[1];
-        colorB.textContent = color[2];
-        colorHex.textContent = rgbToHex(color);
-    } else {
-        colorR.textContent = '-';
-        colorG.textContent = '-';
-        colorB.textContent = '-';
-        colorHex.textContent = '-';
-    }
-}
 
 // Update color count
 function updateColorCount() {
