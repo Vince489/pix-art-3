@@ -8,47 +8,11 @@
 </head>
 <body class="bg-[#0d1117] h-screen flex flex-col m-0 p-0">
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const uploadImageBtn = document.getElementById('uploadImageBtn');
-            const canvas = document.getElementById('canvas');
-
-            // Create a file input element
-            const fileInput = document.createElement('input');
-            fileInput.type = 'file';
-            fileInput.accept = 'image/*';
-            fileInput.style.display = 'none';
-
-            // Add it to the body
-            document.body.appendChild(fileInput);
-
-            // When the upload button is clicked, trigger the file input
-            uploadImageBtn.addEventListener('click', function() {
-                fileInput.click();
-            });
-
-            // When a file is selected
-            fileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        // Set canvas dimensions to match the image
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-
-                        // Draw the image on the canvas
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, img.width, img.height);
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        });
+        // Upload handling is now in script.js
     </script>
+
+    <!-- File input element for image upload -->
+    <input type="file" id="imageInput" accept="image/*" style="display: none;">
 
     <header class="h-16 w-full border-b border-zinc-800 bg-[#161b22] shrink-0">
     </header>
