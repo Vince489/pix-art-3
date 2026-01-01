@@ -10,26 +10,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const uploadImageBtn = document.getElementById('uploadImageBtn');
-            const imageCanvas = document.getElementById('imageCanvas');
-            const canvasContainer = document.getElementById('canvasContainer');
-            const ctx = imageCanvas.getContext('2d');
-            const zoomInBtn = document.getElementById('zoomInBtn');
-            const zoomOutBtn = document.getElementById('zoomOutBtn');
-            const resetBtn = document.getElementById('resetBtn');
-            const zoomLevelDisplay = document.getElementById('zoomLevel');
-
-            // State variables for zoom and panning
-            let currentImage = null;
-            let zoomLevel = 1.0;
-            let offsetX = 0;
-            let offsetY = 0;
-            let isDragging = false;
-            let startX, startY;
-            let startOffsetX, startOffsetY;
-
-            // Palette state variables
-            let palette = [];
-            let lastPickedColor = null;
+            const canvas = document.getElementById('canvas');
 
             // Create a file input element
             const fileInput = document.createElement('input');
@@ -45,365 +26,27 @@
                 fileInput.click();
             });
 
-            // Function to handle image files
-            function handleImageFile(file) {
+            // When a file is selected
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     const img = new Image();
                     img.onload = function() {
-                        currentImage = img;
-                        resetView();
+                        // Set canvas dimensions to match the image
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+
+                        // Draw the image on the canvas
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
                     };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
-            }
-
-            // Reset to original view
-            function resetView() {
-                if (!currentImage) return;
-
-                zoomLevel = 1.0;
-                offsetX = 0;
-                offsetY = 0;
-                updateZoomDisplay();
-
-                // Set canvas internal buffer size to match the image dimensions
-                imageCanvas.width = currentImage.width;
-                imageCanvas.height = currentImage.height;
-
-                // Make canvas DOM size reflect zoom (100% initially)
-                imageCanvas.style.width = currentImage.width + 'px';
-                imageCanvas.style.height = currentImage.height + 'px';
-
-                // Reset container scroll so top-left is visible
-                if (canvasContainer) {
-                    canvasContainer.scrollLeft = 0;
-                    canvasContainer.scrollTop = 0;
-                }
-
-                // Draw the image at native resolution
-                drawImage();
-
-                // Update image dimensions display
-                document.getElementById('imageDimensions').textContent = `${currentImage.width} × ${currentImage.height}`;
-            }
-
-            // Draw the image with current zoom and offset
-            function drawImage() {
-                if (!currentImage) return;
-
-                // Ensure no transform remains on the context and draw at native resolution
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(currentImage, 0, 0);
-            }
-
-            // Update zoom level display
-            function updateZoomDisplay() {
-                zoomLevelDisplay.textContent = Math.round(zoomLevel * 100) + '%';
-            }
-
-            // Zoom functions
-            function zoomIn() {
-                const oldZoom = zoomLevel;
-                const newZoom = Math.min(zoomLevel * 1.2, 5.0);
-                if (newZoom === oldZoom) return;
-
-                // If we have a container, preserve its center point during zoom
-                if (canvasContainer && currentImage) {
-                    const prevWidth = currentImage.width * oldZoom;
-                    const prevHeight = currentImage.height * oldZoom;
-                    const centerX = canvasContainer.scrollLeft + canvasContainer.clientWidth / 2;
-                    const centerY = canvasContainer.scrollTop + canvasContainer.clientHeight / 2;
-                    const ratioX = prevWidth ? centerX / prevWidth : 0.5;
-                    const ratioY = prevHeight ? centerY / prevHeight : 0.5;
-
-                    zoomLevel = newZoom;
-                    // Update canvas CSS size
-                    imageCanvas.style.width = (currentImage.width * zoomLevel) + 'px';
-                    imageCanvas.style.height = (currentImage.height * zoomLevel) + 'px';
-
-                    // Compute new scroll to keep same center
-                    const newScrollLeft = ratioX * (currentImage.width * zoomLevel) - canvasContainer.clientWidth / 2;
-                    const newScrollTop = ratioY * (currentImage.height * zoomLevel) - canvasContainer.clientHeight / 2;
-
-                    canvasContainer.scrollLeft = Math.max(0, Math.min(newScrollLeft, imageCanvas.clientWidth - canvasContainer.clientWidth));
-                    canvasContainer.scrollTop = Math.max(0, Math.min(newScrollTop, imageCanvas.clientHeight - canvasContainer.clientHeight));
-                } else {
-                    zoomLevel = newZoom;
-                    imageCanvas.style.width = (currentImage.width * zoomLevel) + 'px';
-                    imageCanvas.style.height = (currentImage.height * zoomLevel) + 'px';
-                }
-
-                updateZoomDisplay();
-                drawImage();
-            }
-
-            function zoomOut() {
-                const oldZoom = zoomLevel;
-                const newZoom = Math.max(zoomLevel / 1.2, 0.2);
-                if (newZoom === oldZoom) return;
-
-                if (canvasContainer && currentImage) {
-                    const prevWidth = currentImage.width * oldZoom;
-                    const prevHeight = currentImage.height * oldZoom;
-                    const centerX = canvasContainer.scrollLeft + canvasContainer.clientWidth / 2;
-                    const centerY = canvasContainer.scrollTop + canvasContainer.clientHeight / 2;
-                    const ratioX = prevWidth ? centerX / prevWidth : 0.5;
-                    const ratioY = prevHeight ? centerY / prevHeight : 0.5;
-
-                    zoomLevel = newZoom;
-                    // Update canvas CSS size
-                    imageCanvas.style.width = (currentImage.width * zoomLevel) + 'px';
-                    imageCanvas.style.height = (currentImage.height * zoomLevel) + 'px';
-
-                    // Compute new scroll to keep same center
-                    const newScrollLeft = ratioX * (currentImage.width * zoomLevel) - canvasContainer.clientWidth / 2;
-                    const newScrollTop = ratioY * (currentImage.height * zoomLevel) - canvasContainer.clientHeight / 2;
-
-                    canvasContainer.scrollLeft = Math.max(0, Math.min(newScrollLeft, imageCanvas.clientWidth - canvasContainer.clientWidth));
-                    canvasContainer.scrollTop = Math.max(0, Math.min(newScrollTop, imageCanvas.clientHeight - canvasContainer.clientHeight));
-                } else {
-                    zoomLevel = newZoom;
-                    imageCanvas.style.width = (currentImage.width * zoomLevel) + 'px';
-                    imageCanvas.style.height = (currentImage.height * zoomLevel) + 'px';
-                }
-
-                updateZoomDisplay();
-                drawImage();
-            }
-
-            // When a file is selected via the upload button
-            fileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                handleImageFile(file);
             });
-
-            // Drag and drop functionality
-            imageCanvas.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                imageCanvas.style.border = '2px dashed #60a5fa';
-                imageCanvas.style.backgroundColor = 'rgba(96, 165, 250, 0.1)';
-            });
-
-            imageCanvas.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                imageCanvas.style.border = '';
-                imageCanvas.style.backgroundColor = '';
-            });
-
-            imageCanvas.addEventListener('drop', function(e) {
-                e.preventDefault();
-                imageCanvas.style.border = '';
-                imageCanvas.style.backgroundColor = '';
-
-                const file = e.dataTransfer.files[0];
-                if (!file || !file.type.match('image.*')) return;
-
-                handleImageFile(file);
-            });
-
-            // Color picking on canvas click
-            imageCanvas.addEventListener('click', function(event) {
-                if (!currentImage) return;
-
-                const rect = imageCanvas.getBoundingClientRect();
-
-                // Calculate click position relative to the canvas element
-                const clickX = event.clientX - rect.left;
-                const clickY = event.clientY - rect.top;
-
-                // Add scroll offset to get position within the full zoomed canvas
-                const scrollX = canvasContainer.scrollLeft;
-                const scrollY = canvasContainer.scrollTop;
-                const canvasX = clickX + scrollX;
-                const canvasY = clickY + scrollY;
-
-                // Since the canvas internal size matches the original image,
-                // and we're scaling via CSS, we need to map the click coordinates
-                // from the scaled display back to the internal canvas coordinates
-                const scaleX = imageCanvas.width / parseFloat(imageCanvas.style.width || imageCanvas.width);
-                const scaleY = imageCanvas.height / parseFloat(imageCanvas.style.height || imageCanvas.height);
-
-                const imgX = Math.round(canvasX * scaleX);
-                const imgY = Math.round(canvasY * scaleY);
-
-                // Ensure coordinates are within the bounds of the original image
-                if (imgX < 0 || imgX >= currentImage.width || imgY < 0 || imgY >= currentImage.height) {
-                    return; // Don't process clicks outside the image bounds
-                }
-
-                // Get the pixel data directly from the canvas context
-                // Since the canvas is drawn at 1:1 scale internally
-                const pixelData = ctx.getImageData(imgX, imgY, 1, 1).data;
-                const color = [pixelData[0], pixelData[1], pixelData[2]]; // RGB values
-                lastPickedColor = color;
-
-                // Update color info display
-                updateColorInfo(color);
-
-                // Add color to palette if it doesn't already exist
-                if (!palette.some(existingColor => arraysEqual(existingColor, color))) {
-                    palette.push(color);
-                    updatePaletteDisplay();
-                    updateColorCount();
-                }
-            });
-
-            // Mouse wheel zoom (disabled to allow browser scrollbars)
-            // imageCanvas.addEventListener('wheel', function(e) {
-            //     e.preventDefault();
-            //     const delta = e.deltaY > 0 ? 0.8 : 1.25;
-            //     const rect = imageCanvas.getBoundingClientRect();
-            //     const mouseX = e.clientX - rect.left;
-            //     const mouseY = e.clientY - rect.top;
-            //
-            //     // Calculate new zoom level
-            //     const oldZoom = zoomLevel;
-            //     zoomLevel = Math.min(Math.max(zoomLevel * delta, 0.2), 5.0);
-            //
-            //     if (zoomLevel !== oldZoom) {
-            //         // Adjust offset to zoom toward mouse position
-            //         offsetX = mouseX - (mouseX - offsetX) * (zoomLevel / oldZoom);
-            //         offsetY = mouseY - (mouseY - offsetY) * (zoomLevel / oldZoom);
-            //
-            //         updateZoomDisplay();
-            //         drawImage();
-            //     }
-            // });
-
-            // Remove custom panning logic to allow browser scrollbars
-
-            // Palette helper functions
-            function arraysEqual(a, b) {
-                return a.length === b.length && a.every((value, index) => value === b[index]);
-            }
-
-            function rgbToHex([r, g, b]) {
-                return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
-            }
-
-            function hexToRgb(hex) {
-                const bigint = parseInt(hex.slice(1), 16);
-                return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
-            }
-
-            function updateColorInfo(color) {
-                if (color) {
-                    document.getElementById('colorR').textContent = color[0];
-                    document.getElementById('colorG').textContent = color[1];
-                    document.getElementById('colorB').textContent = color[2];
-                    document.getElementById('colorHex').textContent = rgbToHex(color);
-                } else {
-                    document.getElementById('colorR').textContent = '-';
-                    document.getElementById('colorG').textContent = '-';
-                    document.getElementById('colorB').textContent = '-';
-                    document.getElementById('colorHex').textContent = '-';
-                }
-            }
-
-            function updateColorCount() {
-                document.getElementById('colorCount').textContent = palette.length;
-            }
-
-            function updatePaletteDisplay() {
-                const paletteDiv = document.getElementById('palette');
-                paletteDiv.innerHTML = '';
-                palette.forEach((color, index) => {
-                    const colorContainer = document.createElement('div');
-                    colorContainer.className = 'flex flex-col items-center';
-
-                    const colorPicker = document.createElement('input');
-                    colorPicker.type = 'color';
-                    colorPicker.value = rgbToHex(color);
-                    colorPicker.className = 'w-8 h-8 rounded border border-zinc-600';
-                    colorPicker.dataset.index = index;
-
-                    colorPicker.addEventListener('input', (event) => {
-                        const color = hexToRgb(event.target.value);
-                        palette[event.target.dataset.index] = color;
-                    });
-
-                    const removeButton = document.createElement('button');
-                    removeButton.textContent = '×';
-                    removeButton.className = 'bg-red-600 hover:bg-red-700 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs mt-1';
-                    removeButton.addEventListener('click', () => {
-                        palette.splice(index, 1);
-                        updatePaletteDisplay();
-                        updateColorCount();
-                    });
-
-                    colorContainer.appendChild(colorPicker);
-                    colorContainer.appendChild(removeButton);
-                    paletteDiv.appendChild(colorContainer);
-                });
-            }
-
-            function getSavedPalettes() {
-                const palettes = JSON.parse(localStorage.getItem('savedPalettes')) || {};
-                return palettes;
-            }
-
-            function updatePaletteDropdown() {
-                const savedPalettes = getSavedPalettes();
-                const dropdown = document.getElementById('loadPalette');
-                dropdown.innerHTML = '<option value="">-- Select a Palette --</option>';
-                for (const paletteName in savedPalettes) {
-                    const option = document.createElement('option');
-                    option.value = paletteName;
-                    option.textContent = paletteName;
-                    dropdown.appendChild(option);
-                }
-            }
-
-            // Initialize palette display
-            updatePaletteDisplay();
-            updatePaletteDropdown();
-            updateColorCount();
-
-            // Palette event listeners
-            document.getElementById('savePalette').addEventListener('click', () => {
-                const paletteName = document.getElementById('paletteName').value.trim();
-                if (!paletteName) {
-                    alert('Please enter a name for your palette.');
-                    return;
-                }
-
-                let savedPalettes = getSavedPalettes();
-                savedPalettes[paletteName] = palette;
-                localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
-
-                updatePaletteDropdown();
-                alert(`Palette "${paletteName}" saved!`);
-            });
-
-            document.getElementById('loadPalette').addEventListener('change', () => {
-                const selectedPalette = document.getElementById('loadPalette').value;
-                if (selectedPalette) {
-                    palette = getSavedPalettes()[selectedPalette];
-                    updatePaletteDisplay();
-                    updateColorCount();
-                }
-            });
-
-            document.getElementById('deletePalette').addEventListener('click', () => {
-                const selectedPalette = document.getElementById('loadPalette').value;
-                if (selectedPalette) {
-                    let savedPalettes = getSavedPalettes();
-                    delete savedPalettes[selectedPalette];
-                    localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
-                    updatePaletteDropdown();
-                    alert(`Palette "${selectedPalette}" deleted!`);
-                }
-            });
-
-            // Button event listeners
-            zoomInBtn.addEventListener('click', zoomIn);
-            zoomOutBtn.addEventListener('click', zoomOut);
-            resetBtn.addEventListener('click', resetView);
         });
     </script>
 
@@ -419,31 +62,12 @@
                         Upload Image
                     </button>
                 </div>
-                <div class="mb-4">
-                    <h2 class="text-blue-400 text-sm font-medium mb-3 text-center">Zoom Controls</h2>
-                    <div class="flex gap-2 justify-center">
-                        <button id="zoomInBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Zoom In">
-                            <span class="text-lg font-bold">+</span>
-                        </button>
-                        <button id="zoomOutBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Zoom Out">
-                            <span class="text-lg font-bold">−</span>
-                        </button>
-                        <button id="resetBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Reset View">
-                            <span class="text-sm">↻</span>
-                        </button>
-                    </div>
-                    <div id="zoomLevel" class="text-blue-300 text-xs mt-2 text-center bg-zinc-800 py-1.5 px-3 rounded-md border border-zinc-700">
-                        100%
-                    </div>
-                </div>
             </div>
         </aside>
 
-        <main class="flex-1 bg-[#0d1117] p-4 min-w-0 min-h-0">
-            <div id="canvasContainer" class="w-full h-full overflow-scroll min-w-0 min-h-0">
-                <canvas id="imageCanvas" class="rounded block" style="image-rendering: pixelated; background-color: transparent; display: block; max-width: none; max-height: none;"></canvas>
-            </div>
-        </main>
+<main class="flex-1 bg-[#0d1117] overflow-y-auto flex items-center justify-center p-4">
+    <canvas id="canvas" class="max-w-full max-h-full bg-gray-800 rounded"></canvas>
+</main>
 
         <!-- Right Sidebar -->
         <aside class="w-64 border-l border-zinc-800 bg-[#161b22] shrink-0 p-4 overflow-y-auto">
@@ -470,6 +94,7 @@
                         <button id="savePalette" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors">Save</button>
                         <button id="deletePalette" class="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-sm transition-colors">Delete</button>
                     </div>
+                    <button id="generatePalette" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors">Generate Palette</button>
                 </div>
 
                 <div>
@@ -516,5 +141,6 @@
 
     </div>
 
+    <script src="/script.js"></script>
 </body>
 </html>
