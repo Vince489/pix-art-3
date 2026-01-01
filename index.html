@@ -12,6 +12,19 @@
             const uploadImageBtn = document.getElementById('uploadImageBtn');
             const imageCanvas = document.getElementById('imageCanvas');
             const ctx = imageCanvas.getContext('2d');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const zoomLevelDisplay = document.getElementById('zoomLevel');
+
+            // State variables for zoom and panning
+            let currentImage = null;
+            let zoomLevel = 1.0;
+            let offsetX = 0;
+            let offsetY = 0;
+            let isDragging = false;
+            let startX, startY;
+            let startOffsetX, startOffsetY;
 
             // Create a file input element
             const fileInput = document.createElement('input');
@@ -33,16 +46,62 @@
                 reader.onload = function(event) {
                     const img = new Image();
                     img.onload = function() {
-                        // Set canvas dimensions to match the image
-                        imageCanvas.width = img.width;
-                        imageCanvas.height = img.height;
-
-                        // Draw the image on the canvas
-                        ctx.drawImage(img, 0, 0, img.width, img.height);
+                        currentImage = img;
+                        resetView();
                     };
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
+            }
+
+            // Reset to original view
+            function resetView() {
+                if (!currentImage) return;
+
+                zoomLevel = 1.0;
+                offsetX = 0;
+                offsetY = 0;
+                updateZoomDisplay();
+
+                imageCanvas.width = currentImage.width;
+                imageCanvas.height = currentImage.height;
+                drawImage();
+            }
+
+            // Draw the image with current zoom and offset
+            function drawImage() {
+                if (!currentImage) return;
+
+                ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.scale(zoomLevel, zoomLevel);
+                ctx.drawImage(currentImage, 0, 0);
+                ctx.restore();
+            }
+
+            // Update zoom level display
+            function updateZoomDisplay() {
+                zoomLevelDisplay.textContent = Math.round(zoomLevel * 100) + '%';
+            }
+
+            // Zoom functions
+            function zoomIn() {
+                const oldZoom = zoomLevel;
+                zoomLevel = Math.min(zoomLevel * 1.2, 5.0);
+                if (zoomLevel !== oldZoom) {
+                    updateZoomDisplay();
+                    drawImage();
+                }
+            }
+
+            function zoomOut() {
+                const oldZoom = zoomLevel;
+                zoomLevel = Math.max(zoomLevel / 1.2, 0.2);
+                if (zoomLevel !== oldZoom) {
+                    updateZoomDisplay();
+                    drawImage();
+                }
             }
 
             // When a file is selected via the upload button
@@ -75,6 +134,66 @@
 
                 handleImageFile(file);
             });
+
+            // Mouse wheel zoom
+            imageCanvas.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.8 : 1.25;
+                const rect = imageCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
+                // Calculate new zoom level
+                const oldZoom = zoomLevel;
+                zoomLevel = Math.min(Math.max(zoomLevel * delta, 0.2), 5.0);
+
+                if (zoomLevel !== oldZoom) {
+                    // Adjust offset to zoom toward mouse position
+                    offsetX = mouseX - (mouseX - offsetX) * (zoomLevel / oldZoom);
+                    offsetY = mouseY - (mouseY - offsetY) * (zoomLevel / oldZoom);
+
+                    updateZoomDisplay();
+                    drawImage();
+                }
+            });
+
+            // Mouse down for panning
+            imageCanvas.addEventListener('mousedown', function(e) {
+                if (e.button === 0 && zoomLevel > 1) { // Left mouse button and zoomed in
+                    isDragging = true;
+                    startX = e.clientX;
+                    startY = e.clientY;
+                    startOffsetX = offsetX;
+                    startOffsetY = offsetY;
+                    imageCanvas.style.cursor = 'grabbing';
+                }
+            });
+
+            // Mouse move for panning
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+
+                offsetX = startOffsetX + dx;
+                offsetY = startOffsetY + dy;
+
+                drawImage();
+            });
+
+            // Mouse up to end panning
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    imageCanvas.style.cursor = '';
+                }
+            });
+
+            // Button event listeners
+            zoomInBtn.addEventListener('click', zoomIn);
+            zoomOutBtn.addEventListener('click', zoomOut);
+            resetBtn.addEventListener('click', resetView);
         });
     </script>
 
@@ -89,6 +208,23 @@
                     <button id="uploadImageBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors">
                         Upload Image
                     </button>
+                </div>
+                <div class="mb-4">
+                    <h2 class="text-blue-400 text-sm font-medium mb-3 text-center">Zoom Controls</h2>
+                    <div class="flex gap-2 justify-center">
+                        <button id="zoomInBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Zoom In">
+                            <span class="text-lg font-bold">+</span>
+                        </button>
+                        <button id="zoomOutBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Zoom Out">
+                            <span class="text-lg font-bold">−</span>
+                        </button>
+                        <button id="resetBtn" class="w-10 h-10 bg-zinc-800 hover:bg-blue-600 text-blue-300 hover:text-white rounded-md flex items-center justify-center transition-colors duration-200 border border-zinc-700 shadow-sm" title="Reset View">
+                            <span class="text-sm">↻</span>
+                        </button>
+                    </div>
+                    <div id="zoomLevel" class="text-blue-300 text-xs mt-2 text-center bg-zinc-800 py-1.5 px-3 rounded-md border border-zinc-700">
+                        100%
+                    </div>
                 </div>
             </div>
         </aside>
