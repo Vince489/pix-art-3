@@ -248,19 +248,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Generate a palette from the image
-    document.getElementById('generatePalette').addEventListener('click', () => {
-        if (!canvas.width || !canvas.height) {
-            alert('Please upload an image first.');
-            return;
-        }
-
-        // Extract colors from the image
-        const colors = extractProminentColors(canvas, ctx, 8);
-        palette = colors;
-        updatePaletteDisplay();
-        updateColorCount();
-    });
 
     // Apply quantization
     applyQuantizationButton.addEventListener('click', () => {
@@ -296,12 +283,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        let savedPalettes = getSavedPalettes();
-        savedPalettes[paletteName] = palette;
-        localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
+        if (palette.length === 0) {
+            alert('Your palette is empty. Add colors to your palette before saving.');
+            return;
+        }
 
-        updatePaletteDropdown();
-        alert(`Palette "${paletteName}" saved!`);
+        try {
+            let savedPalettes = getSavedPalettes();
+            savedPalettes[paletteName] = palette;
+            localStorage.setItem('savedPalettes', JSON.stringify(savedPalettes));
+
+            updatePaletteDropdown();
+            document.getElementById('paletteName').value = ''; // Clear the input field
+            alert(`Palette "${paletteName}" saved successfully!`);
+        } catch (e) {
+            console.error('Error saving palette:', e);
+            alert('Failed to save palette. Please check your browser settings and try again.');
+        }
     });
 
     // Load a selected palette

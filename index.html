@@ -26,6 +26,30 @@
                         Upload Image
                     </button>
                 </div>
+
+                <div class="mb-4">
+                    <h3 class="text-blue-400 text-sm font-medium mb-2">Image Processing</h3>
+                    <div class="space-y-2">
+                        <div>
+                            <label for="pixelScale" class="block text-sm text-zinc-300 mb-1">Pixelation Scale</label>
+                            <select id="pixelScale" class="w-full bg-zinc-800 border border-zinc-700 rounded p-2 text-sm text-zinc-300">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5" selected>5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                                <option value="10">10</option>
+                            </select>
+                        </div>
+                        <button id="applyPixelation" class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors">Apply Pixelation</button>
+                        <button id="applyQuantization" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 px-3 rounded text-sm transition-colors">Apply Quantization</button>
+                        <button id="downloadImage" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors">Download Image</button>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -58,7 +82,7 @@
                         <button id="savePalette" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors">Save</button>
                         <button id="deletePalette" class="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-sm transition-colors">Delete</button>
                     </div>
-                    <button id="generatePalette" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors">Generate Palette</button>
+                    <button id="addColor" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors mt-2">Add Color</button>
                 </div>
 
                 <div>
