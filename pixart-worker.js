@@ -218,11 +218,11 @@ self.addEventListener('message', (event) => {
     }
 
     // Send back the quantized image using transferable objects for zero-copy operation
-    self.postMessage({ type: 'quantized', data: imageData }, [imageData.data.buffer]);
+    self.postMessage({ type: 'quantized', data: imageData, startTime: event.data.startTime }, [imageData.data.buffer]);
   }
   else if (event.data.type === 'generatePalette') {
     const { imageData, clusterCount } = event.data;
     const palette = kMeansClustering(imageData, clusterCount);
-    self.postMessage({ type: 'generatedPalette', palette });
+    self.postMessage({ type: 'generatedPalette', palette, startTime: event.data.startTime });
   }
 });

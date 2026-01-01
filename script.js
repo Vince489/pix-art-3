@@ -17,6 +17,7 @@ try {
     // ONE permanent listener for all worker communication
     worker.addEventListener('message', (event) => {
         const { type, data, palette: workerPalette } = event.data;
+        const paletteSpinner = document.getElementById('paletteSpinner');
 
         switch (type) {
             case 'quantized':
@@ -29,10 +30,23 @@ try {
                 palette = workerPalette;
                 updatePaletteDisplay();
                 updateColorCount();
+
+                // Hide spinner when palette is generated
+                if (paletteSpinner) {
+                    paletteSpinner.style.display = 'none';
+                    paletteSpinner.classList.remove('active');
+                    console.log("Spinner hidden after palette generation");
+                }
                 break;
 
             case 'error':
                 console.error("Worker error:", data);
+                // Hide spinner on error
+                if (paletteSpinner) {
+                    paletteSpinner.style.display = 'none';
+                    paletteSpinner.classList.remove('active');
+                    console.log("Spinner hidden due to error");
+                }
                 break;
 
             default:
@@ -228,6 +242,18 @@ function handleCanvasClick(event) {
     }
 }
 
+// Function to update performance metrics display
+function updatePerformanceMetrics(operation, duration) {
+    const metricsElement = document.getElementById('performanceMetrics');
+    metricsElement.textContent = `${operation} in ${Math.round(duration)}ms`;
+    metricsElement.classList.remove('hidden');
+
+    // Hide the metrics after 5 seconds
+    setTimeout(() => {
+        metricsElement.classList.add('hidden');
+    }, 5000);
+}
+
 // Initialize everything after DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('imageInput');
@@ -289,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-
     // Apply quantization
     applyQuantizationButton.addEventListener('click', () => {
         if (!canvas.width || !canvas.height) {
@@ -298,8 +323,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (worker) {
+            const startTime = performance.now();
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            worker.postMessage({ type: 'quantize', imageData, palette });
+            worker.postMessage({ type: 'quantize', imageData, palette, startTime });
+
+            // Add a one-time listener for the response to calculate duration
+            const handleQuantizeResponse = (event) => {
+                if (event.data.type === 'quantized') {
+                    const endTime = performance.now();
+                    const duration = endTime - event.data.startTime;
+                    updatePerformanceMetrics('Quantized', duration);
+                    worker.removeEventListener('message', handleQuantizeResponse);
+                }
+            };
+            worker.addEventListener('message', handleQuantizeResponse);
         } else {
             alert('Color quantization requires the worker script (pixart-worker.js). Functionality is limited without it.');
         }
@@ -307,11 +344,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Auto-generate palette using k-Means clustering
     const autoGeneratePaletteButton = document.getElementById('autoGeneratePalette');
+
+    // Create spinner element if it doesn't exist
+    let paletteSpinner = document.getElementById('paletteSpinner');
+    if (!paletteSpinner) {
+        const paletteDiv = document.getElementById('palette');
+        if (paletteDiv) {
+            paletteSpinner = document.createElement('div');
+            paletteSpinner.id = 'paletteSpinner';
+            paletteSpinner.className = 'spinner';
+            paletteSpinner.innerHTML = `
+                <div class="spinner-animation"></div>
+                <div class="spinner-text">Generating palette...</div>
+            `;
+            paletteDiv.appendChild(paletteSpinner);
+            console.log("Created spinner element dynamically");
+        }
+    }
+
+    // Make sure spinner is hidden initially
+    if (paletteSpinner) {
+        paletteSpinner.classList.remove('active');
+        paletteSpinner.style.display = 'none';
+        console.log("Spinner initialized and hidden");
+    } else {
+        console.error("Failed to create spinner element!");
+    }
+
     autoGeneratePaletteButton.addEventListener('click', () => {
         // 1. Guard Clause: Check if image exists before doing anything else
         if (!originalImage || !canvas.width || !canvas.height) {
             alert('Please upload an image first.');
-            return; // This stops the code here so the prompt never shows
+            return;
         }
 
         if (!worker) {
@@ -328,10 +392,25 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Show spinner
+        if (paletteSpinner) {
+            paletteSpinner.style.display = 'flex';
+            paletteSpinner.classList.add('active');
+            console.log("Spinner shown");
+        } else {
+            console.error("Spinner element not found!");
+        }
+
+        const startTime = performance.now();
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-
-        worker.postMessage({ type: 'generatePalette', imageData, clusterCount: numColors });
+        // Send message to worker
+        worker.postMessage({
+            type: 'generatePalette',
+            imageData: imageData,
+            clusterCount: numColors,
+            startTime: startTime
+        });
     });
 
     // Apply pixelation
@@ -433,4 +512,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset image dimensions display
         document.getElementById('imageDimensions').textContent = '-';
     });
+
+    // Add a test function to manually toggle the spinner for debugging
+    window.toggleSpinner = function() {
+        const spinner = document.getElementById('paletteSpinner');
+        if (spinner) {
+            if (spinner.style.display === 'flex') {
+                spinner.style.display = 'none';
+                spinner.classList.remove('active');
+                console.log("Spinner hidden");
+            } else {
+                spinner.style.display = 'flex';
+                spinner.classList.add('active');
+                console.log("Spinner shown");
+            }
+        } else {
+            console.error("Spinner element not found!");
+        }
+    };
 });

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spinner Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: white;
+            padding: 20px;
+        }
+
+        .test-container {
+            background-color: #161b22;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .spinner {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(38, 43, 51, 0.8);
+            z-index: 10;
+            border-radius: 8px;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .spinner.active {
+            display: flex;
+        }
+
+        .spinner-animation {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner-text {
+            color: #9ca3af;
+            font-size: 0.875rem;
+            margin-top: 0.75rem;
+        }
+
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #palette {
+            background-color: #3f3f46;
+            padding: 12px;
+            border-radius: 8px;
+            min-height: 128px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <h1>Spinner Test</h1>
+    <p>This is a test page to verify the spinner functionality works correctly.</p>
+
+    <div class="test-container">
+        <h2>Palette Section</h2>
+        <div id="palette">
+            <!-- This simulates the palette area -->
+            <div id="paletteSpinner" class="spinner">
+                <div class="spinner-animation"></div>
+                <div class="spinner-text">Generating palette...</div>
+            </div>
+        </div>
+
+        <button id="toggleSpinner">Toggle Spinner</button>
+    </div>
+
+    <script>
+        const toggleButton = document.getElementById('toggleSpinner');
+        const spinner = document.getElementById('paletteSpinner');
+
+        toggleButton.addEventListener('click', () => {
+            spinner.classList.toggle('active');
+        });
+    </script>
+</body>
+</html>
