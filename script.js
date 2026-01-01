@@ -35,7 +35,6 @@ try {
                 if (paletteSpinner) {
                     paletteSpinner.style.display = 'none';
                     paletteSpinner.classList.remove('active');
-                    console.log("Spinner hidden after palette generation");
                 }
                 break;
 
@@ -45,7 +44,6 @@ try {
                 if (paletteSpinner) {
                     paletteSpinner.style.display = 'none';
                     paletteSpinner.classList.remove('active');
-                    console.log("Spinner hidden due to error");
                 }
                 break;
 
@@ -358,7 +356,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="spinner-text">Generating palette...</div>
             `;
             paletteDiv.appendChild(paletteSpinner);
-            console.log("Created spinner element dynamically");
         }
     }
 
@@ -366,9 +363,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (paletteSpinner) {
         paletteSpinner.classList.remove('active');
         paletteSpinner.style.display = 'none';
-        console.log("Spinner initialized and hidden");
-    } else {
-        console.error("Failed to create spinner element!");
     }
 
     autoGeneratePaletteButton.addEventListener('click', () => {
@@ -396,9 +390,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (paletteSpinner) {
             paletteSpinner.style.display = 'flex';
             paletteSpinner.classList.add('active');
-            console.log("Spinner shown");
-        } else {
-            console.error("Spinner element not found!");
         }
 
         const startTime = performance.now();
@@ -520,14 +511,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (spinner.style.display === 'flex') {
                 spinner.style.display = 'none';
                 spinner.classList.remove('active');
-                console.log("Spinner hidden");
             } else {
                 spinner.style.display = 'flex';
                 spinner.classList.add('active');
-                console.log("Spinner shown");
             }
-        } else {
-            console.error("Spinner element not found!");
         }
     };
 });
