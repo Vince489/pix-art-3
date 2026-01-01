@@ -14,12 +14,30 @@ let canvas, ctx; // Declare canvas and ctx at a higher scope
 try {
     worker = new Worker('pixart-worker.js');
 
-    // Handle worker response
+    // ONE permanent listener for all worker communication
     worker.addEventListener('message', (event) => {
-        if (event.data.type === 'quantized') {
-            ctx.putImageData(event.data.data, 0, 0);
+        const { type, data, palette: workerPalette } = event.data;
+
+        switch (type) {
+            case 'quantized':
+                // Handle image processing result
+                ctx.putImageData(data, 0, 0);
+                break;
+
+            case 'generatedPalette':
+                // Handle auto-palette result
+                palette = workerPalette;
+                updatePaletteDisplay();
+                updateColorCount();
+                break;
+
+            case 'error':
+                console.error("Worker error:", data);
+                break;
+
+            default:
+                console.warn("Unknown message type from worker:", type);
         }
-        // Other message types are handled by their respective event listeners
     });
 } catch (e) {
     console.error("Worker initialization failed:", e);
@@ -290,9 +308,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-generate palette using k-Means clustering
     const autoGeneratePaletteButton = document.getElementById('autoGeneratePalette');
     autoGeneratePaletteButton.addEventListener('click', () => {
-        if (!canvas.width || !canvas.height) {
+        // 1. Guard Clause: Check if image exists before doing anything else
+        if (!originalImage || !canvas.width || !canvas.height) {
             alert('Please upload an image first.');
-            return;
+            return; // This stops the code here so the prompt never shows
         }
 
         if (!worker) {
@@ -311,17 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // Set up a one-time message handler for the generated palette
-        const paletteHandler = (event) => {
-            if (event.data.type === 'generatedPalette') {
-                palette = event.data.palette;
-                updatePaletteDisplay();
-                updateColorCount();
-                worker.removeEventListener('message', paletteHandler);
-            }
-        };
 
-        worker.addEventListener('message', paletteHandler);
         worker.postMessage({ type: 'generatePalette', imageData, clusterCount: numColors });
     });
 
@@ -404,5 +413,24 @@ document.addEventListener('DOMContentLoaded', function() {
         palette = [];
         updatePaletteDisplay();
         updateColorCount();
+    });
+
+    // Add event listener for the Clear Workspace button
+    document.getElementById('clearWorkspace').addEventListener('click', () => {
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = 0;
+        canvas.height = 0;
+
+        // Reset the original image
+        originalImage = null;
+
+        // Clear the palette
+        palette = [];
+        updatePaletteDisplay();
+        updateColorCount();
+
+        // Reset image dimensions display
+        document.getElementById('imageDimensions').textContent = '-';
     });
 });
