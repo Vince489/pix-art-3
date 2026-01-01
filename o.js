@@ -52,52 +52,171 @@ function squaredDistance(lab1, lab2) {
   );
 }
 
-// Worker Message Handling
-self.addEventListener('message', (event) => {
-  const { imageData, palette } = event.data;
+// k-Means Clustering Algorithm
+function kMeansClustering(imageData, clusterCount, maxIterations = 10) {
   const { data } = imageData;
+  const pixels = [];
 
-  // 1. Precompute palette LAB values
-  const paletteLab = palette.map(rgbToLab);
+  // Sample pixels from the image (skip transparent pixels)
+  const step = Math.max(1, Math.floor(Math.sqrt(data.length / 4) / 100));
+  for (let i = 0; i < data.length; i += 4 * step) {
+    const alpha = data[i + 3];
+    if (alpha === 0) continue; // Skip transparent pixels
 
-  // 2. Use a Map with integer keys for fast lookups
-  const rgbToPaletteMap = new Map();
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    // Use bit-shifted integer as key (faster than string)
-    const key = (r << 16) | (g << 8) | b;
-
-    let matchedColor;
-    if (rgbToPaletteMap.has(key)) {
-      // Fast path: Use cached result
-      matchedColor = rgbToPaletteMap.get(key);
-    } else {
-      // Slow path: Compute LAB and find closest palette color
-      const pixelLab = rgbToLab([r, g, b]);
-      let minDistance = Infinity;
-      let closestIndex = 0;
-
-      // Iterate through the 32-color palette (fast for n=32)
-      for (let j = 0; j < paletteLab.length; j++) {
-        const dist = squaredDistance(pixelLab, paletteLab[j]);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestIndex = j;
-        }
-      }
-      matchedColor = palette[closestIndex];
-      // Cache the result for future pixels
-      rgbToPaletteMap.set(key, matchedColor);
-    }
-
-    // Apply the matched color
-    data[i] = matchedColor[0];     // Red
-    data[i + 1] = matchedColor[1]; // Green
-    data[i + 2] = matchedColor[2]; // Blue
-    // Alpha channel (data[i + 3]) is preserved
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    pixels.push([r, g, b]);
   }
 
-  // Send back the quantized image using transferable objects for zero-copy operation
-  self.postMessage(imageData, [imageData.data.buffer]);
+  if (pixels.length === 0) return [];
+
+  // Initialize clusters by randomly selecting pixels
+  const clusters = [];
+  const clusterAssignments = new Array(pixels.length).fill(0);
+
+  // Use k-means++ for better initial cluster selection
+  clusters.push(pixels[Math.floor(Math.random() * pixels.length)]);
+
+  for (let i = 1; i < clusterCount; i++) {
+    // Calculate distances to nearest cluster for each pixel
+    const distances = pixels.map(pixel => {
+      let minDist = Infinity;
+      for (const cluster of clusters) {
+        const dist = squaredDistance(rgbToLab(pixel), rgbToLab(cluster));
+        if (dist < minDist) minDist = dist;
+      }
+      return minDist;
+    });
+
+    // Select next cluster center with probability proportional to distance squared
+    const total = distances.reduce((sum, d) => sum + d * d, 0);
+    let r = Math.random() * total;
+    let cumulative = 0;
+    let nextCenterIndex = 0;
+
+    for (let j = 0; j < distances.length; j++) {
+      cumulative += distances[j] * distances[j];
+      if (cumulative >= r) {
+        nextCenterIndex = j;
+        break;
+      }
+    }
+
+    clusters.push(pixels[nextCenterIndex]);
+  }
+
+  // Main k-means iteration loop
+  for (let iteration = 0; iteration < maxIterations; iteration++) {
+    // Assignment step: assign each pixel to nearest cluster
+    let changed = false;
+
+    for (let i = 0; i < pixels.length; i++) {
+      const pixel = pixels[i];
+      const pixelLab = rgbToLab(pixel);
+      let minDist = Infinity;
+      let bestCluster = 0;
+
+      for (let j = 0; j < clusters.length; j++) {
+        const clusterLab = rgbToLab(clusters[j]);
+        const dist = squaredDistance(pixelLab, clusterLab);
+
+        if (dist < minDist) {
+          minDist = dist;
+          bestCluster = j;
+        }
+      }
+
+      if (clusterAssignments[i] !== bestCluster) {
+        clusterAssignments[i] = bestCluster;
+        changed = true;
+      }
+    }
+
+    // Early exit if no assignments changed
+    if (!changed) break;
+
+    // Update step: recalculate cluster centers
+    const sums = Array(clusterCount).fill().map(() => ([0, 0, 0]));
+    const counts = Array(clusterCount).fill(0);
+
+    for (let i = 0; i < pixels.length; i++) {
+      const cluster = clusterAssignments[i];
+      const pixel = pixels[i];
+
+      sums[cluster][0] += pixel[0];
+      sums[cluster][1] += pixel[1];
+      sums[cluster][2] += pixel[2];
+      counts[cluster]++;
+    }
+
+    for (let j = 0; j < clusterCount; j++) {
+      if (counts[j] > 0) {
+        clusters[j] = [
+          Math.round(sums[j][0] / counts[j]),
+          Math.round(sums[j][1] / counts[j]),
+          Math.round(sums[j][2] / counts[j])
+        ];
+      }
+    }
+  }
+
+  return clusters;
+}
+
+// Worker Message Handling
+self.addEventListener('message', (event) => {
+  if (event.data.type === 'quantize') {
+    const { imageData, palette } = event.data;
+    const { data } = imageData;
+
+    // 1. Precompute palette LAB values
+    const paletteLab = palette.map(rgbToLab);
+
+    // 2. Use a Map with integer keys for fast lookups
+    const rgbToPaletteMap = new Map();
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      // Use bit-shifted integer as key (faster than string)
+      const key = (r << 16) | (g << 8) | b;
+
+      let matchedColor;
+      if (rgbToPaletteMap.has(key)) {
+        // Fast path: Use cached result
+        matchedColor = rgbToPaletteMap.get(key);
+      } else {
+        // Slow path: Compute LAB and find closest palette color
+        const pixelLab = rgbToLab([r, g, b]);
+        let minDistance = Infinity;
+        let closestIndex = 0;
+
+        // Iterate through the 32-color palette (fast for n=32)
+        for (let j = 0; j < paletteLab.length; j++) {
+          const dist = squaredDistance(pixelLab, paletteLab[j]);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestIndex = j;
+          }
+        }
+        matchedColor = palette[closestIndex];
+        // Cache the result for future pixels
+        rgbToPaletteMap.set(key, matchedColor);
+      }
+
+      // Apply the matched color
+      data[i] = matchedColor[0];     // Red
+      data[i + 1] = matchedColor[1]; // Green
+      data[i + 2] = matchedColor[2]; // Blue
+      // Alpha channel (data[i + 3]) is preserved
+    }
+
+    // Send back the quantized image using transferable objects for zero-copy operation
+    self.postMessage({ type: 'quantized', data: imageData }, [imageData.data.buffer]);
+  }
+  else if (event.data.type === 'generatePalette') {
+    const { imageData, clusterCount } = event.data;
+    const palette = kMeansClustering(imageData, clusterCount);
+    self.postMessage({ type: 'generatedPalette', palette });
+  }
 });

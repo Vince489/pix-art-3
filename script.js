@@ -10,7 +10,10 @@ try {
 
     // Handle worker response
     worker.addEventListener('message', (event) => {
-        ctx.putImageData(event.data, 0, 0);
+        if (event.data.type === 'quantized') {
+            ctx.putImageData(event.data.data, 0, 0);
+        }
+        // Other message types are handled by their respective event listeners
     });
 } catch (e) {
     console.error("Worker initialization failed:", e);
@@ -258,10 +261,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (worker) {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            worker.postMessage({ imageData, palette });
+            worker.postMessage({ type: 'quantize', imageData, palette });
         } else {
             alert('Color quantization requires the worker script (o.js). Functionality is limited without it.');
         }
+    });
+
+    // Auto-generate palette using k-Means clustering
+    const autoGeneratePaletteButton = document.getElementById('autoGeneratePalette');
+    autoGeneratePaletteButton.addEventListener('click', () => {
+        if (!canvas.width || !canvas.height) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        if (!worker) {
+            alert('Auto-generating palette requires the worker script (o.js).');
+            return;
+        }
+
+        // Ask for number of colors (default to 8)
+        const colorCount = prompt('Enter number of colors to generate (4-16):', '8');
+        const numColors = parseInt(colorCount);
+
+        if (isNaN(numColors) || numColors < 4 || numColors > 16) {
+            alert('Please enter a number between 4 and 16.');
+            return;
+        }
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Set up a one-time message handler for the generated palette
+        const paletteHandler = (event) => {
+            if (event.data.type === 'generatedPalette') {
+                palette = event.data.palette;
+                updatePaletteDisplay();
+                updateColorCount();
+                worker.removeEventListener('message', paletteHandler);
+            }
+        };
+
+        worker.addEventListener('message', paletteHandler);
+        worker.postMessage({ type: 'generatePalette', imageData, clusterCount: numColors });
     });
 
     // Apply pixelation
