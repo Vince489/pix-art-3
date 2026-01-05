@@ -1,3 +1,9 @@
+/*
+ * PixArt - Image to Pixel Art Converter
+ * Copyright (c) 2025 Virtron
+ * MIT License (see LICENSE file for details)
+ */
+
 let palette = [];
 let originalImage = null; // Store the original image
 let lastPickedColor = null; // Store the last picked color
@@ -6,11 +12,44 @@ let canvas, ctx; // Declare canvas and ctx at a higher scope
 
 // Try to create a worker if browser supports it
 try {
-    worker = new Worker('o.js');
+    worker = new Worker('pixart-worker.js');
 
-    // Handle worker response
+    // ONE permanent listener for all worker communication
     worker.addEventListener('message', (event) => {
-        ctx.putImageData(event.data, 0, 0);
+        const { type, data, palette: workerPalette } = event.data;
+        const paletteSpinner = document.getElementById('paletteSpinner');
+
+        switch (type) {
+            case 'quantized':
+                // Handle image processing result
+                ctx.putImageData(data, 0, 0);
+                break;
+
+            case 'generatedPalette':
+                // Handle auto-palette result
+                palette = workerPalette;
+                updatePaletteDisplay();
+                updateColorCount();
+
+                // Hide spinner when palette is generated
+                if (paletteSpinner) {
+                    paletteSpinner.style.display = 'none';
+                    paletteSpinner.classList.remove('active');
+                }
+                break;
+
+            case 'error':
+                console.error("Worker error:", data);
+                // Hide spinner on error
+                if (paletteSpinner) {
+                    paletteSpinner.style.display = 'none';
+                    paletteSpinner.classList.remove('active');
+                }
+                break;
+
+            default:
+                console.warn("Unknown message type from worker:", type);
+        }
     });
 } catch (e) {
     console.error("Worker initialization failed:", e);
@@ -127,6 +166,16 @@ function updateColorCount() {
     colorCount.textContent = palette.length;
 }
 
+// Update clear palette button visibility
+function updateClearPaletteButton() {
+    const clearPaletteButton = document.getElementById('clearPalette');
+    if (palette.length > 0) {
+        clearPaletteButton.classList.remove('hidden');
+    } else {
+        clearPaletteButton.classList.add('hidden');
+    }
+}
+
 // Display the palette
 function updatePaletteDisplay() {
     const paletteDiv = document.getElementById('palette');
@@ -165,6 +214,9 @@ function updatePaletteDisplay() {
         // Append container to palette
         paletteDiv.appendChild(colorContainer);
     });
+
+    // Update clear palette button visibility
+    updateClearPaletteButton();
 }
 
 // Capture color from the canvas on click and add to the palette
@@ -188,6 +240,18 @@ function handleCanvasClick(event) {
     }
 }
 
+// Function to update performance metrics display
+function updatePerformanceMetrics(operation, duration) {
+    const metricsElement = document.getElementById('performanceMetrics');
+    metricsElement.textContent = `${operation} in ${Math.round(duration)}ms`;
+    metricsElement.classList.remove('hidden');
+
+    // Hide the metrics after 5 seconds
+    setTimeout(() => {
+        metricsElement.classList.add('hidden');
+    }, 5000);
+}
+
 // Initialize everything after DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('imageInput');
@@ -204,6 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePaletteDisplay();
     updatePaletteDropdown();
     updateColorCount();
+    updateClearPaletteButton();
 
     // Add event listener for the upload button
     uploadImageBtn.addEventListener('click', () => {
@@ -248,7 +313,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-
     // Apply quantization
     applyQuantizationButton.addEventListener('click', () => {
         if (!canvas.width || !canvas.height) {
@@ -257,11 +321,87 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (worker) {
+            const startTime = performance.now();
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            worker.postMessage({ imageData, palette });
+            worker.postMessage({ type: 'quantize', imageData, palette, startTime });
+
+            // Add a one-time listener for the response to calculate duration
+            const handleQuantizeResponse = (event) => {
+                if (event.data.type === 'quantized') {
+                    const endTime = performance.now();
+                    const duration = endTime - event.data.startTime;
+                    updatePerformanceMetrics('Quantized', duration);
+                    worker.removeEventListener('message', handleQuantizeResponse);
+                }
+            };
+            worker.addEventListener('message', handleQuantizeResponse);
         } else {
-            alert('Color quantization requires the worker script (o.js). Functionality is limited without it.');
+            alert('Color quantization requires the worker script (pixart-worker.js). Functionality is limited without it.');
         }
+    });
+
+    // Auto-generate palette using k-Means clustering
+    const autoGeneratePaletteButton = document.getElementById('autoGeneratePalette');
+
+    // Create spinner element if it doesn't exist
+    let paletteSpinner = document.getElementById('paletteSpinner');
+    if (!paletteSpinner) {
+        const paletteDiv = document.getElementById('palette');
+        if (paletteDiv) {
+            paletteSpinner = document.createElement('div');
+            paletteSpinner.id = 'paletteSpinner';
+            paletteSpinner.className = 'spinner';
+            paletteSpinner.innerHTML = `
+                <div class="spinner-animation"></div>
+                <div class="spinner-text">Generating palette...</div>
+            `;
+            paletteDiv.appendChild(paletteSpinner);
+        }
+    }
+
+    // Make sure spinner is hidden initially
+    if (paletteSpinner) {
+        paletteSpinner.classList.remove('active');
+        paletteSpinner.style.display = 'none';
+    }
+
+    autoGeneratePaletteButton.addEventListener('click', () => {
+        // 1. Guard Clause: Check if image exists before doing anything else
+        if (!originalImage || !canvas.width || !canvas.height) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        if (!worker) {
+            alert('Auto-generating palette requires the worker script (pixart-worker.js).');
+            return;
+        }
+
+        // Ask for number of colors (default to 8)
+        const colorCount = prompt('Enter number of colors to generate (4-16):', '8');
+        const numColors = parseInt(colorCount);
+
+        if (isNaN(numColors) || numColors < 4 || numColors > 16) {
+            alert('Please enter a number between 4 and 16.');
+            return;
+        }
+
+        // Show spinner
+        if (paletteSpinner) {
+            paletteSpinner.style.display = 'flex';
+            paletteSpinner.classList.add('active');
+        }
+
+        const startTime = performance.now();
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Send message to worker
+        worker.postMessage({
+            type: 'generatePalette',
+            imageData: imageData,
+            clusterCount: numColors,
+            startTime: startTime
+        });
     });
 
     // Apply pixelation
@@ -337,4 +477,44 @@ document.addEventListener('DOMContentLoaded', function() {
         a.download = 'pixelated-image.png';
         a.click();
     });
+
+    // Add event listener for the Clear Palette button
+    document.getElementById('clearPalette').addEventListener('click', () => {
+        palette = [];
+        updatePaletteDisplay();
+        updateColorCount();
+    });
+
+    // Add event listener for the Clear Workspace button
+    document.getElementById('clearWorkspace').addEventListener('click', () => {
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = 0;
+        canvas.height = 0;
+
+        // Reset the original image
+        originalImage = null;
+
+        // Clear the palette
+        palette = [];
+        updatePaletteDisplay();
+        updateColorCount();
+
+        // Reset image dimensions display
+        document.getElementById('imageDimensions').textContent = '-';
+    });
+
+    // Add a test function to manually toggle the spinner for debugging
+    window.toggleSpinner = function() {
+        const spinner = document.getElementById('paletteSpinner');
+        if (spinner) {
+            if (spinner.style.display === 'flex') {
+                spinner.style.display = 'none';
+                spinner.classList.remove('active');
+            } else {
+                spinner.style.display = 'flex';
+                spinner.classList.add('active');
+            }
+        }
+    };
 });
