@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+    <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -44,31 +44,102 @@
             font-size: 0.875rem;
             margin-top: 0.75rem;
         }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .sidebar-left {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 50;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: 280px;
+            }
+
+            .sidebar-left.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-right {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 50;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                width: 280px;
+            }
+
+            .sidebar-right.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 40;
+                display: none;
+            }
+
+            .overlay.active {
+                display: block;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-toggle {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#0d1117] h-screen flex flex-col m-0 p-0">
-    <script>
-        // Upload handling is now in script.js
-    </script>
 
     <!-- File input element for image upload -->
     <input type="file" id="imageInput" accept="image/*" style="display: none;">
 
     <header class="h-16 w-full border-b border-zinc-800 bg-[#161b22] shrink-0 flex items-center justify-between">
-<div class="flex items-center pl-6">
-    <h1 class="text-xl font-black tracking-widest text-white italic">PIXART STUDIO</h1>
-    <span id="performanceMetrics" class="ml-4 text-sm text-zinc-400 hidden"></span>
-</div>
-        <div class="pr-6">
+        <div class="flex items-center pl-6">
+            <button id="leftSidebarToggle" class="mobile-toggle mr-4 p-2 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+            </button>
+            <h1 class="text-xl font-black tracking-widest text-white italic">PIXART STUDIO</h1>
+            <span id="performanceMetrics" class="ml-4 text-sm text-zinc-400 hidden"></span>
+        </div>
+        <div class="pr-6 flex items-center">
+            <button id="rightSidebarToggle" class="mobile-toggle mr-4 p-2 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.0" stroke="currentColor" class="size-11 text-white">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
             </svg>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 overflow-hidden relative">
+        <!-- Overlay for mobile sidebars -->
+        <div id="overlay" class="overlay"></div>
 
-        <aside class="w-64 border-r border-zinc-800 bg-[#161b22] shrink-0 p-6">
+        <aside id="leftSidebar" class="w-64 border-r border-zinc-800 bg-[#161b22] shrink-0 p-6 sidebar-left">
             <div class="flex flex-col h-full space-y-8">
                 <div>
                     <button id="uploadImageBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2.5 px-4 rounded-md shadow-sm transition-all active:scale-95">
@@ -116,12 +187,12 @@
             </div>
         </aside>
 
-<main class="flex-1 bg-[#0d1117] overflow-y-auto flex items-center justify-center p-4">
-    <canvas id="canvas" class="max-w-full max-h-full bg-gray-800 rounded"></canvas>
-</main>
+        <main id="mainContent" class="flex-1 bg-[#0d1117] overflow-y-auto flex items-center justify-center p-4 main-content">
+            <canvas id="canvas" class="max-w-full max-h-full bg-gray-800 rounded"></canvas>
+        </main>
 
         <!-- Right Sidebar -->
-        <aside class="w-64 border-l border-zinc-800 bg-[#161b22] shrink-0 p-4 overflow-y-auto">
+        <aside id="rightSidebar" class="w-64 border-l border-zinc-800 bg-[#161b22] shrink-0 p-4 overflow-y-auto sidebar-right">
             <div class="space-y-6">
                 <div class="relative">
                     <h2 class="text-blue-400 text-sm font-medium mb-3">Generated Palette</h2>
@@ -178,6 +249,6 @@
 
     </div>
 
-    <script src="/script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

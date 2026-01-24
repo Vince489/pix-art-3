@@ -252,6 +252,34 @@ function updatePerformanceMetrics(operation, duration) {
     }, 5000);
 }
 
+// Toggle sidebar functions
+function toggleLeftSidebar() {
+    const leftSidebar = document.getElementById('leftSidebar');
+    const overlay = document.getElementById('overlay');
+
+    leftSidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+}
+
+function toggleRightSidebar() {
+    const rightSidebar = document.getElementById('rightSidebar');
+    const overlay = document.getElementById('overlay');
+
+    rightSidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+}
+
+// Close sidebars when clicking on overlay
+function closeSidebars() {
+    const leftSidebar = document.getElementById('leftSidebar');
+    const rightSidebar = document.getElementById('rightSidebar');
+    const overlay = document.getElementById('overlay');
+
+    leftSidebar.classList.remove('open');
+    rightSidebar.classList.remove('open');
+    overlay.classList.remove('active');
+}
+
 // Initialize everything after DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     const imageInput = document.getElementById('imageInput');
@@ -274,6 +302,23 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadImageBtn.addEventListener('click', () => {
         imageInput.click();
     });
+
+    // Add event listeners for sidebar toggles
+    const leftSidebarToggle = document.getElementById('leftSidebarToggle');
+    const rightSidebarToggle = document.getElementById('rightSidebarToggle');
+    const overlay = document.getElementById('overlay');
+
+    if (leftSidebarToggle) {
+        leftSidebarToggle.addEventListener('click', toggleLeftSidebar);
+    }
+
+    if (rightSidebarToggle) {
+        rightSidebarToggle.addEventListener('click', toggleRightSidebar);
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeSidebars);
+    }
 
     // Handle file upload
     imageInput.addEventListener('change', (event) => {
