@@ -4,6 +4,103 @@
  * MIT License (see LICENSE file for details)
  */
 
+// ImageResizer class for handling image resizing operations
+class ImageResizer {
+    /**
+     * Resize image using center crop method
+     * Crops the image to a square, then resizes to target size
+     * @param {HTMLImageElement|HTMLCanvasElement} image - Source image or canvas
+     * @param {number} targetSize - Target size in pixels (e.g., 64, 128, 256)
+     * @returns {HTMLCanvasElement} Resized canvas
+     */
+    static resizeCenterCrop(image, targetSize) {
+        const sourceWidth = image.width;
+        const sourceHeight = image.height;
+        
+        // Calculate crop dimensions to maintain aspect ratio
+        let cropWidth, cropHeight, cropX, cropY;
+        
+        if (sourceWidth > sourceHeight) {
+            // Landscape - crop width to match height
+            cropWidth = sourceHeight;
+            cropHeight = sourceHeight;
+            cropX = (sourceWidth - cropWidth) / 2;
+            cropY = 0;
+        } else {
+            // Portrait or square - crop height to match width
+            cropWidth = sourceWidth;
+            cropHeight = sourceWidth;
+            cropX = 0;
+            cropY = (sourceHeight - cropHeight) / 2;
+        }
+        
+        // Create canvas for cropping and resizing
+        const canvas = document.createElement('canvas');
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Draw cropped image and resize in one operation
+        ctx.imageSmoothingEnabled = false; // Preserve pixel art look
+        ctx.drawImage(
+            image,
+            cropX, cropY, cropWidth, cropHeight,  // Source: cropped area
+            0, 0, targetSize, targetSize          // Destination: full canvas
+        );
+        
+        return canvas;
+    }
+    
+    /**
+     * Resize image using letterbox method
+     * Maintains aspect ratio with padding to fit target size
+     * @param {HTMLImageElement|HTMLCanvasElement} image - Source image or canvas
+     * @param {number} targetSize - Target size in pixels (e.g., 64, 128, 256)
+     * @param {string} backgroundColor - Background color for padding (default: transparent)
+     * @returns {HTMLCanvasElement} Resized canvas with letterboxing
+     */
+    static resizeLetterbox(image, targetSize, backgroundColor = 'rgba(0,0,0,0)') {
+        const sourceWidth = image.width;
+        const sourceHeight = image.height;
+        
+        // Calculate aspect ratios
+        const sourceAspect = sourceWidth / sourceHeight;
+        const targetAspect = 1; // Target is square
+        
+        let drawWidth, drawHeight, offsetX, offsetY;
+        
+        if (sourceAspect > targetAspect) {
+            // Landscape - fit width, add vertical padding
+            drawWidth = targetSize;
+            drawHeight = Math.round(targetSize / sourceAspect);
+            offsetX = 0;
+            offsetY = Math.round((targetSize - drawHeight) / 2);
+        } else {
+            // Portrait or square - fit height, add horizontal padding
+            drawHeight = targetSize;
+            drawWidth = Math.round(targetSize * sourceAspect);
+            offsetX = Math.round((targetSize - drawWidth) / 2);
+            offsetY = 0;
+        }
+        
+        // Create canvas with target size
+        const canvas = document.createElement('canvas');
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill background
+        ctx.fillStyle = backgroundColor;
+        ctx.fillRect(0, 0, targetSize, targetSize);
+        
+        // Draw image with letterboxing
+        ctx.imageSmoothingEnabled = false; // Preserve pixel art look
+        ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+        
+        return canvas;
+    }
+}
+
 let palette = [];
 let originalImage = null; // Store the original image
 let lastPickedColor = null; // Store the last picked color
@@ -423,11 +520,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Ask for number of colors (default to 8)
-        const colorCount = prompt('Enter number of colors to generate (4-16):', '8');
+        const colorCount = prompt('Enter number of colors to generate (4-32):', '8');
         const numColors = parseInt(colorCount);
 
-        if (isNaN(numColors) || numColors < 4 || numColors > 16) {
-            alert('Please enter a number between 4 and 16.');
+        if (isNaN(numColors) || numColors < 4 || numColors > 32) {
+            alert('Please enter a number between 4 and 32.');
             return;
         }
 
@@ -459,6 +556,50 @@ document.addEventListener('DOMContentLoaded', function() {
         const scale = document.getElementById('pixelScale').value;
         pixelateImage(originalImage, canvas, scale);
     });
+
+    // Apply resize
+    const resizeImageButton = document.getElementById('resizeImage');
+    if (resizeImageButton) {
+        resizeImageButton.addEventListener('click', () => {
+            if (!originalImage) {
+                alert('Please upload an image first.');
+                return;
+            }
+
+            const targetSize = parseInt(document.getElementById('resizeSize').value);
+            const resizeMethod = document.querySelector('input[name="resizeMethod"]:checked').value;
+            
+            let startTime = performance.now();
+            let resizedCanvas;
+
+            try {
+                if (resizeMethod === 'center') {
+                    resizedCanvas = ImageResizer.resizeCenterCrop(originalImage, targetSize);
+                } else {
+                    resizedCanvas = ImageResizer.resizeLetterbox(originalImage, targetSize);
+                }
+
+                // Update canvas with resized image
+                canvas.width = resizedCanvas.width;
+                canvas.height = resizedCanvas.height;
+                ctx.drawImage(resizedCanvas, 0, 0);
+
+                // Update original image reference to the resized version
+                originalImage = resizedCanvas;
+
+                // Update image dimensions display
+                imageDimensions.textContent = `${targetSize} × ${targetSize}`;
+
+                // Update performance metrics
+                let endTime = performance.now();
+                updatePerformanceMetrics('Resized', endTime - startTime);
+
+            } catch (error) {
+                console.error('Resize error:', error);
+                alert('Error resizing image. Please try again.');
+            }
+        });
+    }
 
     // Save a palette with a user-given name
     document.getElementById('savePalette').addEventListener('click', () => {

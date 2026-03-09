@@ -151,6 +151,29 @@
                     <h3 class="text-zinc-400 text-xs font-semibold uppercase tracking-wider">Image Processing</h3>
 
                     <div class="bg-zinc-800/50 p-3 rounded-lg border border-zinc-700/50">
+                        <label class="block text-xs text-zinc-400 mb-2">Resize Options</label>
+                        <select id="resizeSize" class="w-full bg-zinc-900 border border-zinc-700 rounded-md p-2 text-sm text-zinc-200 mb-2 outline-none focus:border-blue-500 transition-colors">
+                            <option value="16">16px</option>
+                            <option value="32">32px</option>
+                            <option value="64">64px</option>
+                            <option value="128">128px</option>
+                            <option value="256">256px</option>
+                            <option value="512">512px</option>
+                        </select>
+                        <div class="flex gap-4 mb-2">
+                            <label class="flex items-center text-xs text-zinc-400">
+                                <input type="radio" name="resizeMethod" value="center" checked class="mr-2"> Center Crop
+                            </label>
+                            <label class="flex items-center text-xs text-zinc-400">
+                                <input type="radio" name="resizeMethod" value="letterbox" class="mr-2"> Letterbox
+                            </label>
+                        </div>
+                        <button id="resizeImage" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors">
+                            Resize Image
+                        </button>
+                    </div>
+
+                    <div class="bg-zinc-800/50 p-3 rounded-lg border border-zinc-700/50">
                         <label for="pixelScale" class="block text-xs text-zinc-400 mb-2">Pixelation Scale</label>
                         <select id="pixelScale" class="w-full bg-zinc-900 border border-zinc-700 rounded-md p-2 text-sm text-zinc-200 outline-none focus:border-blue-500 transition-colors">
                             <option value="1">1</option>
